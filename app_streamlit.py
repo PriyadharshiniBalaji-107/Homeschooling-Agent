@@ -1,0 +1,93 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "6c8ccbf7-5508-4e78-9715-f509d53cc2ca",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# src/app_streamlit.py\n",
+    "import streamlit as st\n",
+    "from src.search import load_csv, search_curriculum\n",
+    "from src.agent import build_prompt, call_gemini\n",
+    "import re\n",
+    "\n",
+    "st.set_page_config(page_title=\"Homeschool Curriculum Assistant\", layout=\"wide\")\n",
+    "st.title(\"Homeschool Curriculum Assistant — Capstone Demo\")\n",
+    "\n",
+    "# Load data\n",
+    "df = load_csv(\"data/curriculum_data.csv\")\n",
+    "\n",
+    "with st.sidebar:\n",
+    "    st.header(\"Filters (optional)\")\n",
+    "    grade_input = st.text_input(\"Grade (e.g., 2)\", \"\")\n",
+    "    subject_input = st.text_input(\"Subject (e.g., math)\", \"\")\n",
+    "    faith_filter = st.selectbox(\"Faith-based preference\", [\"No preference\", \"Yes\", \"No\"])\n",
+    "\n",
+    "st.write(\"Ask the agent a question, e.g., 'Recommend a 3rd grade science curriculum'\")\n",
+    "\n",
+    "user_question = st.text_input(\"Your question\", value=\"\", key=\"question\")\n",
+    "\n",
+    "def parse_grade_subject(text):\n",
+    "    grade = None\n",
+    "    subject = None\n",
+    "    g = re.search(r\"(\\d+)(?:st|nd|rd|th)?\\s*grade\", text, re.I)\n",
+    "    if g:\n",
+    "        grade = g.group(1)\n",
+    "    s = re.search(r\"(math|science|english|reading|history|art|music|geography)\", text, re.I)\n",
+    "    if s:\n",
+    "        subject = s.group(1)\n",
+    "    return grade, subject\n",
+    "\n",
+    "if st.button(\"Ask\") and user_question.strip():\n",
+    "    grade, subject = parse_grade_subject(user_question)\n",
+    "    # prefer form inputs if user set them\n",
+    "    if grade_input:\n",
+    "        grade = grade_input\n",
+    "    if subject_input:\n",
+    "        subject = subject_input\n",
+    "\n",
+    "    faith_pref = None\n",
+    "    if faith_filter == \"Yes\":\n",
+    "        faith_pref = \"yes\"\n",
+    "    elif faith_filter == \"No\":\n",
+    "        faith_pref = \"no\"\n",
+    "\n",
+    "    matches = search_curriculum(df, grade=grade, subject=subject, faith_pref=faith_pref)\n",
+    "    results_text = \"\\n\".join([f\"- {m['Curriculum']} (Grade {m['Grade']}, {m['Subject']}) — {m['Format']}; {m.get('Notes','')}. Link: {m.get('Link','')}\" for m in matches]) or \"No matches found.\"\n",
+    "\n",
+    "    prompt = build_prompt(user_question, results_text)\n",
+    "    with st.spinner(\"Generating response...\"):\n",
+    "        answer = call_gemini(prompt)\n",
+    "\n",
+    "    st.subheader(\"Agent response\")\n",
+    "    st.write(answer)\n",
+    "\n",
+    "    st.subheader(\"Retrieved matches\")\n",
+    "    st.table(matches or [])\n"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python [conda env:base] *",
+   "language": "python",
+   "name": "conda-base-py"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.12.7"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}

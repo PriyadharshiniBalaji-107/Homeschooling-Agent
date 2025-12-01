@@ -1,0 +1,16 @@
+# Architecture: Homeschooling AI Agent
+
+## Layers
+1. Frontend: Streamlit chat UI (src/app_streamlit.py)
+2. Backend/Agent: src/agent.py (prompt builder + GenAI invocation)
+3. Retrieval: src/search.py using CSV (data/curriculum_data.csv)
+4. Model: Google GenAI (Gemini) via google-genai
+5. Deployment: Containerize with Docker and deploy to Cloud Run / Render
+
+## Flow
+User -> Streamlit UI -> build_prompt -> call_gemini -> model response -> UI
+
+## Next steps
+- Replace CSV with vector DB for fuzzy retrieval
+- Integrate ADK tool registry & capabilities
+- Add auth, rate limits, and logging
